@@ -5,9 +5,14 @@ Chosen because it was the most profitable of the five tested families over
 the full history (12 symbols, 4h). Rules are IDENTICAL to the backtest in
 omnis/backtest/strategy_zoo.py:
 
-  ENTRY (on a closed 4h bar, flat only)
-    SHORT: close < lowest low of previous 20 bars  AND close < EMA200
-    LONG : close > highest high of previous 20 bars AND close > EMA200
+  ENTRY (on a closed 4h bar, flat only) — "join the trend" variant
+    SHORT: close < EMA200 AND close <= highest high of previous 10 bars
+    LONG : close > EMA200 AND close >= lowest low of previous 10 bars
+    (i.e. be in the trend whenever the exit is not triggered; switched from
+    breakout-only entries on 2026-11-16 because on 25 coins it backtested
+    better: +0.042R vs +0.033R per trade, t 1.28 vs 0.54 — still unproven)
+    When more symbols qualify than free slots, UNIVERSE order (roughly
+    market cap, most liquid first) decides.
   EXIT (on a closed 4h bar)
     SHORT: close > highest high of previous 10 bars
     LONG : close < lowest low of previous 10 bars
@@ -37,7 +42,7 @@ import math
 import os
 import time
 
-from omnis.backtest.strategy_zoo import indicators, donchian_entry, donchian_exit
+from omnis.backtest.strategy_zoo import indicators, donchian_join_entry, donchian_exit
 
 UNIVERSE = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT",
             "AVAXUSDT", "LINKUSDT", "NEARUSDT", "RENDERUSDT", "ICPUSDT", "SUIUSDT",
@@ -155,7 +160,7 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
             open_count -= 1
             continue
 
-        side = donchian_entry(d, i)
+        side = donchian_join_entry(d, i)
         if not side:
             continue
         if equity < EQUITY_FLOOR:

@@ -74,6 +74,24 @@ def donchian_exit(d, i, side, n=10):
     return d["c"][i] > max(d["h"][i - n:i])
 
 
+def donchian_join_entry(d, i):
+    """
+    Join an existing trend instead of waiting for a fresh 20-bar breakout:
+    be in the EMA200 direction whenever the 10-bar Donchian exit is not
+    triggered. Same stop and exit as donchian_20_10. On 25 coins it gave
+    +0.042R/trade over 1491 trades vs +0.033R over 717 for breakout-only
+    (t = 1.28 vs 0.54) — better, but still not statistically proven.
+    """
+    e = d["ema200"][i]
+    if e is None or i < 12:
+        return ""
+    if d["c"][i] < e and not donchian_exit(d, i, "SHORT"):
+        return "SHORT"
+    if d["c"][i] > e and not donchian_exit(d, i, "LONG"):
+        return "LONG"
+    return ""
+
+
 def tsmom_entry(d, i, look=180):
     # time-series momentum: sign of ~30-day return, only on a flip
     if i < look + 1:
@@ -145,6 +163,7 @@ def bb_revert_exit(d, i, side):
 STRATEGIES = {
     #  name           entry             exit            SL ATR  max bars
     "donchian_20_10": (donchian_entry, donchian_exit, 3.0, 120),
+    "donchian_join":  (donchian_join_entry, donchian_exit, 3.0, 120),
     "tsmom_30d":      (tsmom_entry, tsmom_exit, 4.0, 360),
     "ema_20_50":      (ema_cross_entry, ema_cross_exit, 3.0, 180),
     "rsi2_pullback":  (rsi2_entry, rsi2_exit, 3.0, 20),
