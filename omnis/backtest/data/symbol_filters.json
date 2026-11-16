@@ -1,0 +1,86 @@
+{
+ "BTCUSDT": {
+  "tick": "0.10",
+  "step": "0.001",
+  "min_qty": "0.001",
+  "min_notional": "50",
+  "status": "TRADING"
+ },
+ "ETHUSDT": {
+  "tick": "0.01",
+  "step": "0.001",
+  "min_qty": "0.001",
+  "min_notional": "20",
+  "status": "TRADING"
+ },
+ "XRPUSDT": {
+  "tick": "0.0001",
+  "step": "0.1",
+  "min_qty": "0.1",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "LINKUSDT": {
+  "tick": "0.001",
+  "step": "0.01",
+  "min_qty": "0.01",
+  "min_notional": "20",
+  "status": "TRADING"
+ },
+ "BNBUSDT": {
+  "tick": "0.010",
+  "step": "0.01",
+  "min_qty": "0.01",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "DOGEUSDT": {
+  "tick": "0.000010",
+  "step": "1",
+  "min_qty": "1",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "SOLUSDT": {
+  "tick": "0.0100",
+  "step": "0.01",
+  "min_qty": "0.01",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "AVAXUSDT": {
+  "tick": "0.0010",
+  "step": "1",
+  "min_qty": "1",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "NEARUSDT": {
+  "tick": "0.0010",
+  "step": "1",
+  "min_qty": "1",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "ICPUSDT": {
+  "tick": "0.001000",
+  "step": "1",
+  "min_qty": "1",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "SUIUSDT": {
+  "tick": "0.000100",
+  "step": "0.1",
+  "min_qty": "0.1",
+  "min_notional": "5",
+  "status": "TRADING"
+ },
+ "RENDERUSDT": {
+  "tick": "0.0010000",
+  "step": "0.1",
+  "min_qty": "0.1",
+  "min_notional": "5",
+  "status": "TRADING"
+ }
+}
