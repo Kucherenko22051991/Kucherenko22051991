@@ -15,10 +15,11 @@ omnis/backtest/strategy_zoo.py:
   STOP LOSS: 3 x ATR(14) from entry, placed on the exchange immediately.
 
 Risk (user's hard rules):
-  - RISK_PCT of equity per trade (0.75%, inside the required 0.5-1%)
+  - RISK_PCT of equity per trade (2%, raised from 0.75% at the user's request
+    after seeing the Monte Carlo; 2% is the level with the highest median)
   - leverage set to 5x, never more
   - at most MAX_POSITIONS open (crypto is highly correlated)
-  - a trade is skipped if the exchange minimum size would push risk > 1%
+  - a trade is skipped if the exchange minimum size would push risk > 2.5%
   - no new entries if equity < EQUITY_FLOOR (circuit breaker)
 
 This script never talks to the exchange. It reads data and prints a JSON
@@ -39,14 +40,16 @@ import time
 from omnis.backtest.strategy_zoo import indicators, donchian_entry, donchian_exit
 
 UNIVERSE = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT",
-            "AVAXUSDT", "LINKUSDT", "NEARUSDT", "RENDERUSDT", "ICPUSDT", "SUIUSDT"]
-RISK_PCT = 0.75
-MAX_RISK_PCT = 1.0
+            "AVAXUSDT", "LINKUSDT", "NEARUSDT", "RENDERUSDT", "ICPUSDT", "SUIUSDT",
+            "ADAUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT", "TRXUSDT", "UNIUSDT",
+            "AAVEUSDT", "ARBUSDT", "OPUSDT", "INJUSDT", "APTUSDT", "FILUSDT", "ATOMUSDT"]
+RISK_PCT = 2.0             # user raised risk to 2% per trade (2026-11-16)
+MAX_RISK_PCT = 2.5
 SL_ATR = 3.0
 MAX_HOLD_BARS = 120
 MAX_POSITIONS = 5
 LEVERAGE = 5
-EQUITY_FLOOR = 300.0       # ~ -14% from 348.68 start: stop opening new trades
+EQUITY_FLOOR = 220.0       # ~ -37% from 348.68 start: stop opening new trades
 BAR_MS = 4 * 3600 * 1000
 
 FILTERS_PATH = os.path.join(os.path.dirname(__file__), "..", "backtest", "data",
