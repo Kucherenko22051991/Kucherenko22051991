@@ -18,13 +18,20 @@ omnis/backtest/strategy_zoo.py:
     LONG : close < lowest low of previous 10 bars
     or position held >= 120 bars (20 days)
   STOP LOSS: 3 x ATR(14) from entry, placed on the exchange immediately.
+  TAKE PROFIT: TP_R x the stop distance (2R), placed on the exchange right
+    after the stop (added 2026-11-18). Backtest on 25 coins, 4h: 2R was the
+    only target that did not hurt in-sample (93% of no-TP) and it helped
+    out-of-sample (185%); trades close ~20% sooner, freeing slots. Smaller
+    targets (0.5-1R) cut in-sample results 2-3x. Not statistically proven.
 
 Risk (user's hard rules):
-  - RISK_PCT of equity per trade (2%, raised from 0.75% at the user's request
-    after seeing the Monte Carlo; 2% is the level with the highest median)
+  - RISK_PCT of equity per trade: 4% (user raised 0.75% -> 2% on 2026-11-16,
+    then 2% -> 4% on 2026-11-18 after seeing the Monte Carlo: with the 2R
+    target, 3-month median $474 vs $417 at 2%, but ~12% chance of hitting
+    the equity floor vs 0.5%)
   - leverage set to 5x, never more
   - at most MAX_POSITIONS open (crypto is highly correlated)
-  - a trade is skipped if the exchange minimum size would push risk > 2.5%
+  - a trade is skipped if the exchange minimum size would push risk > 5%
   - no new entries if equity < EQUITY_FLOOR (circuit breaker)
 
 This script never talks to the exchange. It reads data and prints a JSON
@@ -48,9 +55,10 @@ UNIVERSE = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT",
             "AVAXUSDT", "LINKUSDT", "NEARUSDT", "RENDERUSDT", "ICPUSDT", "SUIUSDT",
             "ADAUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT", "TRXUSDT", "UNIUSDT",
             "AAVEUSDT", "ARBUSDT", "OPUSDT", "INJUSDT", "APTUSDT", "FILUSDT", "ATOMUSDT"]
-RISK_PCT = 2.0             # user raised risk to 2% per trade (2026-11-16)
-MAX_RISK_PCT = 2.5
+RISK_PCT = 4.0             # user raised risk to 4% per trade (2026-11-18)
+MAX_RISK_PCT = 5.0
 SL_ATR = 3.0
+TP_R = 2.0                 # take profit at 2 x the stop distance
 MAX_HOLD_BARS = 120
 MAX_POSITIONS = 5
 LEVERAGE = 5
@@ -137,6 +145,8 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
                 f = filters[sym]
                 is_short = pos["side"] == "SHORT"
                 sl = pos["entry"] + SL_ATR * atr if is_short else pos["entry"] - SL_ATR * atr
+                tp = (pos["entry"] - TP_R * SL_ATR * atr if is_short
+                      else pos["entry"] + TP_R * SL_ATR * atr)
                 held_positions.append({
                     "symbol": sym, "side": pos["side"], "close": close,
                     "bars_held": held,
@@ -147,6 +157,16 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
                         "type": "STOP_MARKET", "closePosition": "true",
                         "workingType": "MARK_PRICE", "priceProtect": "true",
                         "triggerPrice": round_tick(sl, f["tick"], up=is_short),
+                    },
+                    # use ONLY if the position has no take profit on the
+                    # exchange AND no stop either; if a stop exists, put the
+                    # TP at entry -/+ TP_R x |entry - stop trigger| instead
+                    "fallback_take_profit_algo_order": {
+                        "algoType": "CONDITIONAL", "symbol": sym,
+                        "side": "BUY" if is_short else "SELL",
+                        "type": "TAKE_PROFIT_MARKET", "closePosition": "true",
+                        "workingType": "MARK_PRICE", "priceProtect": "true",
+                        "triggerPrice": round_tick(tp, f["tick"], up=not is_short),
                     },
                 })
                 continue
@@ -189,6 +209,8 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
         margin_left -= margin
         open_count += 1
         sl = close + stop_dist if side == "SHORT" else close - stop_dist
+        tp_dist = TP_R * stop_dist
+        tp = close - tp_dist if side == "SHORT" else close + tp_dist
         entries.append({
             "symbol": sym,
             "direction": side,
@@ -202,7 +224,17 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
                 "workingType": "MARK_PRICE", "priceProtect": "true",
                 "triggerPrice": round_tick(sl, f["tick"], up=(side == "SHORT")),
             },
+            # place right after the stop; recompute from the real fill:
+            # entry - tp_distance (SHORT) / entry + tp_distance (LONG)
+            "take_profit_algo_order": {
+                "algoType": "CONDITIONAL", "symbol": sym,
+                "side": "BUY" if side == "SHORT" else "SELL",
+                "type": "TAKE_PROFIT_MARKET", "closePosition": "true",
+                "workingType": "MARK_PRICE", "priceProtect": "true",
+                "triggerPrice": round_tick(tp, f["tick"], up=(side == "LONG")),
+            },
             "sl_distance": stop_dist,
+            "tp_distance": tp_dist,
             "risk_usd": round(risk, 2),
             "signal_close": close,
         })
