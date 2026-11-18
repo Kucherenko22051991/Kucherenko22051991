@@ -64,6 +64,7 @@ MAX_POSITIONS = 5
 LEVERAGE = 5
 EQUITY_FLOOR = 220.0       # ~ -37% from 348.68 start: stop opening new trades
 BAR_MS = 4 * 3600 * 1000
+EXIT_GRACE_MS = 20 * 60 * 1000   # engine exits happen within ~20 min of a 4h close
 
 FILTERS_PATH = os.path.join(os.path.dirname(__file__), "..", "backtest", "data",
                             "symbol_filters.json")
@@ -113,8 +114,20 @@ def load_positions(path: str) -> dict:
     return out
 
 
+def load_recent_exits(path: str) -> dict:
+    """Flat symbols with their last position update time (ms) — i.e. when
+    the position was last closed, by the engine, a take profit or a stop."""
+    if not path:
+        return {}
+    with open(path) as f:
+        raw = json.load(f)
+    return {p["symbol"]: int(p.get("updateTime", 0)) for p in raw
+            if float(p.get("positionAmt", 0)) == 0 and int(p.get("updateTime", 0)) > 0}
+
+
 def plan(klines: dict, positions: dict, equity: float, available: float,
-         now_ms: int) -> dict:
+         now_ms: int, recent_exits: dict = None) -> dict:
+    recent_exits = recent_exits or {}
     filters = json.load(open(FILTERS_PATH))
     exits, entries, notes, held_positions = [], [], [], []
     open_count = len([s for s in positions if s in UNIVERSE])
@@ -182,6 +195,13 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
 
         side = donchian_join_entry(d, i)
         if not side:
+            continue
+        # Same timing as the backtest: after a position is closed during a 4h
+        # bar (take profit / stop), the next entry check is the close of the
+        # FOLLOWING bar. Matters because the operator may run every 30 min.
+        if recent_exits.get(sym, 0) >= c[i]["time"] + EXIT_GRACE_MS:
+            notes.append(f"{sym}: {side} signal ignored, position closed during or "
+                         f"after the last closed 4h bar; waiting for the next close")
             continue
         if equity < EQUITY_FLOOR:
             notes.append(f"{sym}: {side} signal ignored, equity {equity} < floor {EQUITY_FLOOR}")
@@ -264,7 +284,8 @@ def main():
         sym, path = item.split("=", 1)
         kl[sym] = load_klines(path)
     print(json.dumps(plan(kl, load_positions(a.positions_file), a.equity,
-                          a.available, a.now_ms), indent=1))
+                          a.available, a.now_ms,
+                          recent_exits=load_recent_exits(a.positions_file)), indent=1))
 
 
 if __name__ == "__main__":
