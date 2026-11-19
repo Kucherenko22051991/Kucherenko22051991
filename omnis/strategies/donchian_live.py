@@ -130,11 +130,13 @@ def load_recent_exits(path: str) -> dict:
 
 def plan(klines: dict, positions: dict, equity: float, available: float,
          now_ms: int, recent_exits: dict = None, universe: list = None,
-         max_positions: int = None, leverage: int = None) -> dict:
+         max_positions: int = None, leverage: int = None,
+         sl_atr: float = None) -> dict:
     recent_exits = recent_exits or {}
     universe = universe or UNIVERSE
     max_positions = max_positions or MAX_POSITIONS
     leverage = leverage or LEVERAGE
+    sl_atr = sl_atr or SL_ATR
     filters = json.load(open(FILTERS_PATH))
     exits, entries, notes, held_positions = [], [], [], []
     open_count = len([s for s in positions if s in universe])
@@ -164,9 +166,9 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
             else:
                 f = filters[sym]
                 is_short = pos["side"] == "SHORT"
-                sl = pos["entry"] + SL_ATR * atr if is_short else pos["entry"] - SL_ATR * atr
-                tp = (pos["entry"] - TP_R * SL_ATR * atr if is_short
-                      else pos["entry"] + TP_R * SL_ATR * atr)
+                sl = pos["entry"] + sl_atr * atr if is_short else pos["entry"] - sl_atr * atr
+                tp = (pos["entry"] - TP_R * sl_atr * atr if is_short
+                      else pos["entry"] + TP_R * sl_atr * atr)
                 held_positions.append({
                     "symbol": sym, "side": pos["side"], "close": close,
                     "bars_held": held,
@@ -218,7 +220,7 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
             continue
 
         f = filters[sym]
-        stop_dist = SL_ATR * atr
+        stop_dist = sl_atr * atr
         qty = floor_step(equity * RISK_PCT / 100 / stop_dist, f["step"])
         min_qty = max(float(f["min_qty"]),
                       floor_step(float(f["min_notional"]) / close, f["step"]) + float(f["step"]))
@@ -289,6 +291,8 @@ def main():
                     help="comma-separated symbols to trade instead of UNIVERSE")
     ap.add_argument("--max-positions", type=int, default=0)
     ap.add_argument("--leverage", type=int, default=0)
+    ap.add_argument("--sl-atr", type=float, default=0,
+                    help="stop distance in ATR (default SL_ATR = 3)")
     a = ap.parse_args()
     kl = {}
     for item in a.klines:
@@ -299,7 +303,8 @@ def main():
                           recent_exits=load_recent_exits(a.positions_file),
                           universe=[x for x in a.universe.split(",") if x] or None,
                           max_positions=a.max_positions or None,
-                          leverage=a.leverage or None), indent=1))
+                          leverage=a.leverage or None,
+                          sl_atr=a.sl_atr or None), indent=1))
 
 
 if __name__ == "__main__":
