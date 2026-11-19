@@ -30,7 +30,9 @@ Risk (user's hard rules):
     target, 3-month median $474 vs $417 at 2%, but ~12% chance of hitting
     the equity floor vs 0.5%)
   - leverage set to 5x, never more
-  - at most MAX_POSITIONS open (crypto is highly correlated)
+  - at most MAX_POSITIONS open: 10 (user raised 5 -> 10 on 2026-11-19 to put
+    idle margin to work; crypto is highly correlated, so several stops can
+    hit together)
   - a trade is skipped if the exchange minimum size would push risk > 5%
   - no new entries if equity < EQUITY_FLOOR (circuit breaker)
 
@@ -60,7 +62,7 @@ MAX_RISK_PCT = 5.0
 SL_ATR = 3.0
 TP_R = 2.0                 # take profit at 2 x the stop distance
 MAX_HOLD_BARS = 120
-MAX_POSITIONS = 5
+MAX_POSITIONS = 10         # user raised 5 -> 10 (2026-11-19)
 LEVERAGE = 5
 EQUITY_FLOOR = 220.0       # ~ -37% from 348.68 start: stop opening new trades
 BAR_MS = 4 * 3600 * 1000
