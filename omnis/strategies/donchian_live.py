@@ -29,7 +29,8 @@ Risk (user's hard rules):
     then 2% -> 4% on 2026-11-18 after seeing the Monte Carlo: with the 2R
     target, 3-month median $474 vs $417 at 2%, but ~12% chance of hitting
     the equity floor vs 0.5%)
-  - leverage set to 5x, never more
+  - leverage 5x by default; --leverage overrides it (user chose 10x for
+    Binance Alpha coins on 2026-11-19)
   - at most MAX_POSITIONS open: 10 (user raised 5 -> 10 on 2026-11-19 to put
     idle margin to work; crypto is highly correlated, so several stops can
     hit together)
@@ -128,14 +129,18 @@ def load_recent_exits(path: str) -> dict:
 
 
 def plan(klines: dict, positions: dict, equity: float, available: float,
-         now_ms: int, recent_exits: dict = None) -> dict:
+         now_ms: int, recent_exits: dict = None, universe: list = None,
+         max_positions: int = None, leverage: int = None) -> dict:
     recent_exits = recent_exits or {}
+    universe = universe or UNIVERSE
+    max_positions = max_positions or MAX_POSITIONS
+    leverage = leverage or LEVERAGE
     filters = json.load(open(FILTERS_PATH))
     exits, entries, notes, held_positions = [], [], [], []
-    open_count = len([s for s in positions if s in UNIVERSE])
+    open_count = len([s for s in positions if s in universe])
     margin_left = available
 
-    for sym in UNIVERSE:
+    for sym in universe:
         if sym not in klines:
             notes.append(f"{sym}: no klines supplied, skipped")
             continue
@@ -208,7 +213,7 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
         if equity < EQUITY_FLOOR:
             notes.append(f"{sym}: {side} signal ignored, equity {equity} < floor {EQUITY_FLOOR}")
             continue
-        if open_count >= MAX_POSITIONS:
+        if open_count >= max_positions:
             notes.append(f"{sym}: {side} signal ignored, already {open_count} positions")
             continue
 
@@ -224,7 +229,7 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
             notes.append(f"{sym}: {side} skipped, min size risks ${risk:.2f} "
                          f"> {MAX_RISK_PCT}% of equity")
             continue
-        margin = qty * close / LEVERAGE
+        margin = qty * close / leverage
         if margin > margin_left * 0.9:
             notes.append(f"{sym}: {side} skipped, needs ${margin:.2f} margin")
             continue
@@ -236,7 +241,7 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
         entries.append({
             "symbol": sym,
             "direction": side,
-            "set_leverage": LEVERAGE,
+            "set_leverage": leverage,
             "order": {"side": "SELL" if side == "SHORT" else "BUY",
                       "type": "MARKET", "quantity": qty},
             "stop_loss_algo_order": {
@@ -280,6 +285,10 @@ def main():
     ap.add_argument("--klines", action="append", default=[],
                     help="SYMBOL=path to klines dump (raw Binance arrays)")
     ap.add_argument("--now-ms", type=int, default=int(time.time() * 1000))
+    ap.add_argument("--universe", default="",
+                    help="comma-separated symbols to trade instead of UNIVERSE")
+    ap.add_argument("--max-positions", type=int, default=0)
+    ap.add_argument("--leverage", type=int, default=0)
     a = ap.parse_args()
     kl = {}
     for item in a.klines:
@@ -287,7 +296,10 @@ def main():
         kl[sym] = load_klines(path)
     print(json.dumps(plan(kl, load_positions(a.positions_file), a.equity,
                           a.available, a.now_ms,
-                          recent_exits=load_recent_exits(a.positions_file)), indent=1))
+                          recent_exits=load_recent_exits(a.positions_file),
+                          universe=[x for x in a.universe.split(",") if x] or None,
+                          max_positions=a.max_positions or None,
+                          leverage=a.leverage or None), indent=1))
 
 
 if __name__ == "__main__":
