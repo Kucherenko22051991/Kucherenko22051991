@@ -79,7 +79,9 @@ def analyse(sym, p5, p1, now_ms):
         # (a) pullback into 1h EMA21-50 zone / VWAP, rejected by a 5m CHoCH with volume and taker flow
         zone_top = max(x1.e21, x1.e50); zone_bot = min(x1.e21, x1.e50)
         last12 = m5.tail(12)
-        touched = (last12.h.max() >= zone_bot) if d < 0 else (last12.l.min() <= zone_top)
+        # rejection of the zone: wick into it AND close back on the trade side of it
+        touched = ((last12.h.max() >= zone_bot) and (price < zone_bot)) if d < 0 else \
+                  ((last12.l.min() <= zone_top) and (price > zone_top))
         s5h, s5l = swings(m5.tail(60).reset_index(drop=True), k=2)
         t5 = m5.tail(60).reset_index(drop=True)
         if d < 0 and s5l:
