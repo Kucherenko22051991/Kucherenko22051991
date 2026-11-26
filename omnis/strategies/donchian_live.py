@@ -131,12 +131,15 @@ def load_recent_exits(path: str) -> dict:
 def plan(klines: dict, positions: dict, equity: float, available: float,
          now_ms: int, recent_exits: dict = None, universe: list = None,
          max_positions: int = None, leverage: int = None,
-         sl_atr: float = None) -> dict:
+         sl_atr: float = None, risk_pct: float = None,
+         tp_r: float = None) -> dict:
     recent_exits = recent_exits or {}
     universe = universe or UNIVERSE
     max_positions = max_positions or MAX_POSITIONS
     leverage = leverage or LEVERAGE
     sl_atr = sl_atr or SL_ATR
+    risk_pct = risk_pct or RISK_PCT
+    tp_r = tp_r or TP_R
     filters = json.load(open(FILTERS_PATH))
     exits, entries, notes, held_positions = [], [], [], []
     open_count = len([s for s in positions if s in universe])
@@ -167,8 +170,8 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
                 f = filters[sym]
                 is_short = pos["side"] == "SHORT"
                 sl = pos["entry"] + sl_atr * atr if is_short else pos["entry"] - sl_atr * atr
-                tp = (pos["entry"] - TP_R * sl_atr * atr if is_short
-                      else pos["entry"] + TP_R * sl_atr * atr)
+                tp = (pos["entry"] - tp_r * sl_atr * atr if is_short
+                      else pos["entry"] + tp_r * sl_atr * atr)
                 held_positions.append({
                     "symbol": sym, "side": pos["side"], "close": close,
                     "bars_held": held,
@@ -221,7 +224,7 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
 
         f = filters[sym]
         stop_dist = sl_atr * atr
-        qty = floor_step(equity * RISK_PCT / 100 / stop_dist, f["step"])
+        qty = floor_step(equity * risk_pct / 100 / stop_dist, f["step"])
         min_qty = max(float(f["min_qty"]),
                       floor_step(float(f["min_notional"]) / close, f["step"]) + float(f["step"]))
         if qty < min_qty:
@@ -238,7 +241,7 @@ def plan(klines: dict, positions: dict, equity: float, available: float,
         margin_left -= margin
         open_count += 1
         sl = close + stop_dist if side == "SHORT" else close - stop_dist
-        tp_dist = TP_R * stop_dist
+        tp_dist = tp_r * stop_dist
         tp = close - tp_dist if side == "SHORT" else close + tp_dist
         entries.append({
             "symbol": sym,
@@ -293,6 +296,10 @@ def main():
     ap.add_argument("--leverage", type=int, default=0)
     ap.add_argument("--sl-atr", type=float, default=0,
                     help="stop distance in ATR (default SL_ATR = 3)")
+    ap.add_argument("--risk-pct", type=float, default=0,
+                    help="risk per trade in %% of equity (default RISK_PCT = 4)")
+    ap.add_argument("--tp-r", type=float, default=0,
+                    help="take profit in multiples of the stop distance (default TP_R = 2)")
     a = ap.parse_args()
     kl = {}
     for item in a.klines:
@@ -304,7 +311,9 @@ def main():
                           universe=[x for x in a.universe.split(",") if x] or None,
                           max_positions=a.max_positions or None,
                           leverage=a.leverage or None,
-                          sl_atr=a.sl_atr or None), indent=1))
+                          sl_atr=a.sl_atr or None,
+                          risk_pct=a.risk_pct or None,
+                          tp_r=a.tp_r or None), indent=1))
 
 
 if __name__ == "__main__":
