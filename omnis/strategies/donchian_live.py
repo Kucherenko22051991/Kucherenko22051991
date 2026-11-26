@@ -45,6 +45,13 @@ Usage:
       --equity 348.68 --available 348.68 \
       --positions-file <positionInformationV2 dump> \
       --klines BTCUSDT=<klines dump> --klines ETHUSDT=<...> ...
+
+Profit -> spot rule (user, 2026-11-26): the futures account trades with the
+deposit only (base $333.54). Realized profit above the base (more than $10)
+is moved to the spot wallet and spent on freshly listed Binance spot coins
+(liquid, listed <= 90 days ago, up to 3 coins, each with a -30% stop) -- see
+omnis.strategies.spot_newlist. The deposit itself is never moved; nothing is
+ever withdrawn or moved back from spot.
 """
 import argparse
 import json
