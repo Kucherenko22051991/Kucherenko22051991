@@ -11,7 +11,7 @@ import json, sys, time
 import numpy as np, pandas as pd
 from omnis.backtest.scalp.bt import ema, rsi, atr
 
-MIN_ROOM_R = 2.0  # user 2026-11-26: target 2R (was 3R)
+MIN_ROOM_R = 1.5  # user 2026-11-26: 1.5R (was 2R, earlier 3R)
 
 
 def read(path, now_ms):
