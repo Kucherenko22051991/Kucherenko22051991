@@ -11,6 +11,8 @@ import json, sys, time
 import numpy as np, pandas as pd
 from omnis.backtest.scalp.bt import ema, rsi, atr
 
+MIN_ROOM_R = 2.0  # user 2026-11-26: target 2R (was 3R)
+
 
 def read(path, now_ms):
     d = json.loads(open(path).read())
@@ -129,7 +131,7 @@ def analyse(sym, p5, p1, now_ms):
                                   room_R_to_next_level=rr_b, next_level=round(nxt_b, 6)))
     for st in out['setups']:   # a stop on the wrong side of price, or outside 0.5%-5%, makes the setup invalid
         wrong = (st['side'] == 'SHORT' and st['stop'] <= price) or (st['side'] == 'LONG' and st['stop'] >= price)
-        st['valid'] = (not wrong) and 0.5 <= st['stop_pct'] <= 5.0 and st['room_R_to_next_level'] >= 3
+        st['valid'] = (not wrong) and 0.5 <= st['stop_pct'] <= 5.0 and st['room_R_to_next_level'] >= MIN_ROOM_R
     return out
 
 
