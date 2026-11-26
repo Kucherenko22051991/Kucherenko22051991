@@ -1,0 +1,29 @@
+list,segs,trades_hist,trades_day,mean_net_trade,sampling,horizon,trades,p_dd20,p_dd50,p_below_220,fin_p5,fin_med,fin_p95,p_profit
+"best OOS list (1m momentum, maker/maker) - optimistic",OOS,153,40.8,0.082,iid,1m,1224,67.2,0.7,5.0,254.0,425.0,711.0,79.3
+"best OOS list (1m momentum, maker/maker) - optimistic",OOS,153,40.8,0.082,iid,3m,3672,97.5,6.3,9.3,298.0,705.0,1726.0,92.5
+"best OOS list (1m momentum, maker/maker) - optimistic",OOS,153,40.8,0.082,block20,1m,1224,84.6,1.8,7.6,247.0,424.0,751.0,77.0
+"best OOS list (1m momentum, maker/maker) - optimistic",OOS,153,40.8,0.082,block20,3m,3672,99.7,13.6,14.2,272.0,705.0,1882.0,90.3
+"1m momentum maker/maker, IS+OOS",IS+OOS,512,46.7,-0.323,iid,1m,1402,100.0,99.7,100.0,50.0,80.0,130.0,0.0
+"1m momentum maker/maker, IS+OOS",IS+OOS,512,46.7,-0.323,iid,3m,4205,100.0,100.0,100.0,2.0,5.0,11.0,0.0
+"1m momentum maker/maker, IS+OOS",IS+OOS,512,46.7,-0.323,block20,1m,1402,100.0,99.5,100.0,46.0,80.0,141.0,0.0
+"1m momentum maker/maker, IS+OOS",IS+OOS,512,46.7,-0.323,block20,3m,4205,100.0,100.0,100.0,2.0,5.0,13.0,0.0
+"1m ORB maker/maker, IS+OOS (IS part is fitted)",IS+OOS,78,7.1,0.283,iid,1m,214,0.2,0.0,0.0,329.0,394.0,471.0,94.7
+"1m ORB maker/maker, IS+OOS (IS part is fitted)",IS+OOS,78,7.1,0.283,iid,3m,641,1.3,0.0,0.0,412.0,561.0,767.0,99.8
+"1m ORB maker/maker, IS+OOS (IS part is fitted)",IS+OOS,78,7.1,0.283,block20,1m,214,8.0,0.0,0.0,291.0,393.0,545.0,82.1
+"1m ORB maker/maker, IS+OOS (IS part is fitted)",IS+OOS,78,7.1,0.283,block20,3m,641,36.7,0.0,0.5,330.0,552.0,985.0,95.0
+"1m ORB maker/maker, OOS only",OOS,28,7.5,-0.399,iid,1m,224,81.2,0.0,11.6,213.0,251.0,297.0,0.3
+"1m ORB maker/maker, OOS only",OOS,28,7.5,-0.399,iid,3m,672,100.0,83.6,99.4,108.0,144.0,192.0,0.0
+"1m ORB maker/maker, OOS only",OOS,28,7.5,-0.399,block20,1m,224,87.4,0.0,6.2,220.0,250.0,283.0,0.0
+"1m ORB maker/maker, OOS only",OOS,28,7.5,-0.399,block20,3m,672,100.0,90.3,100.0,116.0,144.0,180.0,0.0
+"5m ORB maker/maker, OOS (least-bad 5m)",OOS,156,9.5,-0.42,iid,1m,284,94.3,2.7,48.0,178.0,227.0,294.0,0.9
+"5m ORB maker/maker, OOS (least-bad 5m)",OOS,156,9.5,-0.42,iid,3m,851,100.0,97.0,99.8,69.0,108.0,168.0,0.0
+"5m ORB maker/maker, OOS (least-bad 5m)",OOS,156,9.5,-0.42,block20,1m,284,93.8,7.4,50.2,167.0,229.0,307.0,2.0
+"5m ORB maker/maker, OOS (least-bad 5m)",OOS,156,9.5,-0.42,block20,3m,851,100.0,95.9,99.4,62.0,107.0,182.0,0.0
+"5m momentum maker-entry, OOS",OOS,300,18.2,-0.381,iid,1m,545,99.8,64.4,88.3,103.0,167.0,277.0,1.2
+"5m momentum maker-entry, OOS",OOS,300,18.2,-0.381,iid,3m,1636,100.0,99.9,100.0,19.0,43.0,104.0,0.0
+"5m momentum maker-entry, OOS",OOS,300,18.2,-0.381,block20,1m,545,99.9,70.4,84.3,85.0,168.0,332.0,5.1
+"5m momentum maker-entry, OOS",OOS,300,18.2,-0.381,block20,3m,1636,100.0,99.7,99.6,14.0,43.0,143.0,0.3
+"5m momentum taker, 1-bar delay, OOS",OOS,301,18.2,-0.185,iid,1m,547,97.7,25.9,57.2,140.0,230.0,387.0,12.4
+"5m momentum taker, 1-bar delay, OOS",OOS,301,18.2,-0.185,iid,3m,1642,100.0,92.2,94.8,47.0,113.0,273.0,2.4
+"5m momentum taker, 1-bar delay, OOS",OOS,301,18.2,-0.185,block20,1m,547,99.5,46.6,64.1,113.0,227.0,484.0,19.9
+"5m momentum taker, 1-bar delay, OOS",OOS,301,18.2,-0.185,block20,3m,1642,100.0,94.8,92.4,34.0,113.0,406.0,8.4
