@@ -53,7 +53,8 @@ User, 2026-11-28: "Навіть коли у клода закінчиться л
 
 ## Research: @illia_btc paper journal (from 2026-11-28)
 User asked to trade the ideas of TikTok author @illia_btc ("його прогнози дуже точні").
-A check of his 13 videos (28.10–28.11) did not confirm it: 6 of 7 filled entries hit the stop.
+A check of his 13 videos (28.10–28.11) did not confirm it: of 9 closed ideas, 2 hit the target and
+7 the stop (−5.2R), using his own candle-close stop rule.
 User agreed ("Так") to a paper journal first.
 
 - Do NOT trade his ideas. Track them on paper for 2–3 weeks; review with the user ~2026-12-19.

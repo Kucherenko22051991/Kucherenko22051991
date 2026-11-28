@@ -8,7 +8,8 @@ what would have happened.
 
 The ideas live in omnis/research/illia_calls.csv, one row per idea, written by
 hand from the charts in his videos (most uploads have no sound):
-  id, video_utc, video_id, symbol, side, entry_lo, entry_hi, stop, target, note
+  id, video_utc, video_id, symbol, side, entry_lo, entry_hi, stop, stop_rule,
+  target, note
 
 Rules, fixed in advance so the result cannot be bent afterwards:
 - Only candles that open after the video time count.
@@ -16,13 +17,18 @@ Rules, fixed in advance so the result cannot be bent afterwards:
   reaches entry_lo). If the candle already opens inside or past the zone the
   fill is at the open; otherwise at the middle of the zone when price reaches
   it, else at the zone edge.
-- Stop: his red line. If he showed none, a stop 3% beyond the far edge of the
-  zone is used and marked "умовний".
+- Stop: his red line. In the videos with sound he sets stops on a candle
+  CLOSE beyond the level ("закріплення тіла денної/4-годинної свічки"), so
+  stop_rule is close1d (UTC daily close), close4h, or touch; his stop with no
+  stated rule defaults to close4h, and the exit is that close. If he showed no
+  stop, a touch stop 3% beyond the far edge of the zone is used ("умовний").
 - Target: his target if he gave one, otherwise 2R from the fill.
-- A candle that touches both the stop and the target counts as a stop.
+- With a touch stop, a candle that touches both the stop and the target counts
+  as a stop; with a close stop the target touch inside the candle comes first.
 - An idea that has not filled 21 days after the video expires.
-- Result is in R (initial risk units): a stop is -1R, a target is +R of the
-  target; an open idea is marked to the last close.
+- Result is in R (initial risk units): a touch stop is -1R, a close stop is
+  the loss at that close, a target is +R of the target; an open idea is marked
+  to the last close.
 
 Usage:
   python -m omnis.research.illia_tracker \
@@ -65,6 +71,7 @@ def load_calls(path: str) -> list:
             "video_utc": r["video_utc"], "symbol": r["symbol"].strip(),
             "side": r["side"].strip().upper(), "lo": float(r["entry_lo"]),
             "hi": float(r["entry_hi"]), "stop": _num(r["stop"]),
+            "stop_rule": (r.get("stop_rule") or "").strip(),
             "target": _num(r["target"]), "note": r.get("note", ""),
         })
     return calls
@@ -77,16 +84,30 @@ def load_klines(path: str) -> list:
             for k in raw]
 
 
+def _r(long, entry, exit_px, risk):
+    return round(((exit_px - entry) if long else (entry - exit_px)) / risk, 2)
+
+
+def _stop_exit(rule, long, stop, t, l, h, c):
+    """Exit price if this 4h candle stops the trade out, else None."""
+    if rule == "touch":
+        return stop if (l <= stop if long else h >= stop) else None
+    if rule == "close1d" and (t // 3_600_000) % 24 != 20:
+        return None  # only the 20:00 UTC candle closes the UTC day
+    return c if (c < stop if long else c > stop) else None
+
+
 def evaluate(call: dict, bars: list, now_ms: int = None) -> dict:
     side, lo, hi = call["side"], call["lo"], call["hi"]
     long = side == "LONG"
     stop = call["stop"]
     stop_src = "його"
+    rule = call.get("stop_rule") or "close4h"
     if stop is None:
         stop = lo * (1 - DEFAULT_STOP_PCT) if long else hi * (1 + DEFAULT_STOP_PCT)
-        stop_src = "умовний"
+        stop_src, rule = "умовний", "touch"
     out = {"id": call["id"], "symbol": call["symbol"], "side": side,
-           "zone": [lo, hi], "stop": stop, "stop_src": stop_src,
+           "zone": [lo, hi], "stop": stop, "stop_src": stop_src, "stop_rule": rule,
            "status": "WAITING", "entry": None, "fill_ms": None,
            "target": call["target"], "target_src": "його" if call["target"] else "2R",
            "close_ms": None, "exit": None, "r": None, "max_r": None, "last": None}
@@ -123,17 +144,19 @@ def evaluate(call: dict, bars: list, now_ms: int = None) -> dict:
             target = call["target"] or (entry + 2 * risk if long else entry - 2 * risk)
             out.update(entry=entry, fill_ms=t, target=target, status="OPEN")
             # the fill candle: its extreme on the stop side may come after the fill
-            if (long and l <= stop) or (not long and h >= stop):
-                out.update(status="STOP", close_ms=t, exit=stop, r=-1.0, max_r=0.0)
+            exit_px = _stop_exit(rule, long, stop, t, l, h, c)
+            if exit_px is not None:
+                out.update(status="STOP", close_ms=t, exit=exit_px,
+                           r=_r(long, entry, exit_px, risk), max_r=0.0)
                 return out
             continue
         fav = (h - entry) / risk if long else (entry - l) / risk
         best = max(best, fav)
-        hit_stop = l <= stop if long else h >= stop
+        exit_px = _stop_exit(rule, long, stop, t, l, h, c)
         hit_tgt = h >= target if long else l <= target
-        if hit_stop:
-            out.update(status="STOP", close_ms=t, exit=stop, r=-1.0,
-                       max_r=round(best, 2))
+        if exit_px is not None and (rule == "touch" or not hit_tgt):
+            out.update(status="STOP", close_ms=t, exit=exit_px,
+                       r=_r(long, entry, exit_px, risk), max_r=round(best, 2))
             return out
         if hit_tgt:
             r = abs(target - entry) / risk
@@ -191,7 +214,10 @@ def report(calls: list, results: list, summary: dict) -> str:
         c = by_id[r["id"]]
         zone = _fmt(r["zone"][0]) if r["zone"][0] == r["zone"][1] else \
             f"{_fmt(r['zone'][0])}–{_fmt(r['zone'][1])}"
-        stop = _fmt(r["stop"]) + (" (умовний)" if r["stop_src"] == "умовний" else "")
+        stop = _fmt(r["stop"]) + {"touch": "", "close4h": " (закриття 4г)",
+                                  "close1d": " (закриття дня)"}[r["stop_rule"]]
+        if r["stop_src"] == "умовний":
+            stop = _fmt(r["stop"]) + " (умовний)"
         tgt = _fmt(r["target"]) + (" (2R)" if r["target_src"] == "2R" and r["target"] else "")
         status = STATUS_UA[r["status"]]
         if r["status"] in ("STOP", "TARGET"):

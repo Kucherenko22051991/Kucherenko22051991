@@ -10,9 +10,10 @@ def bar(i, o, h, l, c):
     return (T0 + i * H4, o, h, l, c)
 
 
-def call(side="LONG", lo=95.0, hi=100.0, stop=90.0, target=None):
+def call(side="LONG", lo=95.0, hi=100.0, stop=90.0, target=None, rule="touch"):
     return {"id": 1, "video_ms": T0, "video_utc": "2026-11-28T12:00", "symbol": "X",
-            "side": side, "lo": lo, "hi": hi, "stop": stop, "target": target, "note": ""}
+            "side": side, "lo": lo, "hi": hi, "stop": stop, "stop_rule": rule,
+            "target": target, "note": ""}
 
 
 class TrackerTest(unittest.TestCase):
@@ -54,6 +55,22 @@ class TrackerTest(unittest.TestCase):
         self.assertAlmostEqual(r["r"], 0.3, places=2)
         far = [bar(0, 110, 111, 105, 108), bar(22 * 6, 108, 109, 96, 97)]
         self.assertEqual(evaluate(call(), far)["status"], "EXPIRED")
+
+    def test_close_stops(self):
+        # close4h: a wick through the stop does not stop out, a close below does
+        bars = [bar(0, 110, 111, 99, 99), bar(1, 99, 101, 85, 95), bar(2, 95, 96, 80, 88)]
+        r = evaluate(call(rule="close4h"), bars)
+        self.assertEqual((r["status"], r["exit"]), ("STOP", 88))
+        self.assertEqual(r["r"], -1.2)
+        # close4h: target touched inside the candle wins over a close below the stop
+        r = evaluate(call(rule="close4h"), [bar(0, 110, 111, 99, 99), bar(1, 99, 125, 85, 86)])
+        self.assertEqual(r["status"], "TARGET")
+        # close1d: only the 20:00 UTC candle can stop out
+        day = (T0 // 86_400_000 + 1) * 86_400_000
+        b = lambda hh, c: (day + hh * 3_600_000, 99, 100, c - 1, c)
+        c1 = dict(call(rule="close1d"), video_ms=day)
+        r = evaluate(c1, [b(0, 99), b(4, 85), b(8, 99), b(20, 89)])
+        self.assertEqual((r["status"], r["exit"], r["close_ms"]), ("STOP", 89, day + 20 * 3_600_000))
 
     def test_summary(self):
         res = [{"status": "STOP", "r": -1.0, "max_r": 0.2},
