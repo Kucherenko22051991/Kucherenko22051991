@@ -50,3 +50,17 @@ User, 2026-11-28: "Навіть коли у клода закінчиться л
   - actions;
   - statistics;
   - a spot line.
+
+## Research: @illia_btc paper journal (from 2026-11-28)
+User asked to trade the ideas of TikTok author @illia_btc ("його прогнози дуже точні").
+A check of his 13 videos (28.10–28.11) did not confirm it: 6 of 7 filled entries hit the stop.
+User agreed ("Так") to a paper journal first.
+
+- Do NOT trade his ideas. Track them on paper for 2–3 weeks; review with the user ~2026-12-19.
+- Journal: `omnis/research/illia_calls.csv` (one row per idea, written from his charts;
+  most uploads have no sound). Evaluator: `omnis/research/illia_tracker.py` (fixed rules
+  in its docstring; 4h klines from the Binance MCP tools).
+- Daily check: list his videos with yt-dlp (`https://www.tiktok.com/@illia_btc`), add the
+  ideas from new videos, run the tracker, report in Ukrainian.
+- If the review shows ≥50% of closed ideas reaching the target, propose (do not apply)
+  how to use his levels inside the hard rules above.
