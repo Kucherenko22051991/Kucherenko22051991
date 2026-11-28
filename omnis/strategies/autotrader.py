@@ -114,7 +114,7 @@ def load_dotenv(path: str):
     """Minimal .env reader: KEY=VALUE lines; existing env vars win."""
     if not os.path.exists(path):
         return
-    with open(path) as f:
+    with open(path, encoding="utf-8-sig") as f:     # -sig: Windows Notepad may add a BOM
         for line in f:
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -518,7 +518,7 @@ class Trader:
 
 def append_log(rec: dict):
     os.makedirs(LOG_DIR, exist_ok=True)
-    with open(LOG_PATH, "a") as f:
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
@@ -554,18 +554,34 @@ def check(ex: Exchange):
     """Read-only test: key, clock, balance, positions, algo orders, klines."""
     ex.sync_time()
     w, u, a = ex.usdt_balance()
-    print(f"OK ключ працює. Баланс USDT {w:.2f}, плюс/мінус {u:+.2f}, вільно {a:.2f}")
+    print(f"[так] ключ працює. Баланс USDT {w:.2f}, плюс/мінус {u:+.2f}, вільно {a:.2f}")
     pos = nonzero(ex.positions())
-    print(f"OK позиції: {len(pos)}")
+    print(f"[так] позиції: {len(pos)}")
     for p in pos:
         print(f"   {p['symbol']} {p['positionAmt']} вхід {p['entryPrice']} зараз {p['markPrice']}")
     algos = ex.open_algos()
-    print(f"OK умовні ордери (стопи й тейки): {len(algos)}")
+    print(f"[так] умовні ордери (стопи й тейки): {len(algos)}")
     for o in algos:
         print(f"   {o['symbol']} {o.get('orderType') or o.get('type')} {o['triggerPrice']}")
     k = ex.klines(ALPHA[0])
-    print(f"OK свічки {ALPHA[0]}: {len(k)}")
+    print(f"[так] свічки {ALPHA[0]}: {len(k)}")
     print("Перевірку завершено. Нічого не змінено.")
+
+
+def setup_key():
+    """Ask for the key in the local console (hidden input) and write .env."""
+    import getpass
+    print("Налаштування ключа Binance. Під час введення символи не показуються —")
+    print("просто вставте (Ctrl+V або права кнопка миші) і натисніть Enter.")
+    key = getpass.getpass("Ключ (API Key): ").strip()
+    secret = getpass.getpass("Секретний ключ (Secret Key): ").strip()
+    if not key or not secret:
+        sys.exit("Ключ порожній — нічого не збережено.")
+    path = os.path.join(ROOT, ".env")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"BINANCE_API_KEY={key}\nBINANCE_API_SECRET={secret}\n")
+    os.environ["BINANCE_API_KEY"], os.environ["BINANCE_API_SECRET"] = key, secret
+    print(f"Ключ збережено у файлі {path} (лише на цьому комп'ютері).")
 
 
 def main():
@@ -573,15 +589,24 @@ def main():
     ap.add_argument("--live", action="store_true", help="really place orders (default: dry run)")
     ap.add_argument("--loop", action="store_true", help="run every 30 min forever")
     ap.add_argument("--check", action="store_true", help="read-only connectivity test")
+    ap.add_argument("--setup", action="store_true", help="enter the API key and save it to .env")
     a = ap.parse_args()
 
+    if a.setup:
+        setup_key()
     load_dotenv(os.path.join(ROOT, ".env"))
     key, secret = os.environ.get("BINANCE_API_KEY"), os.environ.get("BINANCE_API_SECRET")
     if not key or not secret:
         sys.exit("Немає ключа: задайте BINANCE_API_KEY і BINANCE_API_SECRET (або файл .env).")
     ex = Exchange(BinanceREST(key, secret))
-    if a.check:
-        check(ex)
+    if a.check or a.setup:
+        try:
+            check(ex)
+        except BinanceError as e:
+            sys.exit(f"Біржа відхилила запит: {e}\nПеревірте ключ, дозвіл «Enable Futures» "
+                     f"і обмеження за IP-адресою.")
+        except Exception as e:
+            sys.exit(f"Немає зв'язку з біржею: {e}")
         return
     with open(FILTERS_PATH) as f:
         filters = json.load(f)
